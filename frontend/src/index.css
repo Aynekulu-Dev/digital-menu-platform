@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideup {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-paper text-ink font-body antialiased;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display;
+  }
+  ::selection {
+    @apply bg-turmeric/30;
+  }
+  *:focus-visible {
+    outline: 2px solid #D9A62E;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Signature element: dotted-leader menu row, like a printed restaurant menu */
+  .menu-leader {
+    @apply flex-1 border-b border-dotted border-ink/25 translate-y-[-4px] mx-2;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-espresso text-paper
+           px-5 py-2.5 text-sm font-medium tracking-wide transition
+           hover:bg-espresso-800 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-espresso/20 bg-transparent
+           text-espresso px-5 py-2.5 text-sm font-medium tracking-wide transition
+           hover:border-espresso/50 hover:bg-espresso/5 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-berbere text-paper
+           px-5 py-2.5 text-sm font-medium tracking-wide transition
+           hover:bg-berbere-600 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .field-label {
+    @apply block text-xs font-semibold uppercase tracking-wider text-espresso/60 mb-1.5;
+  }
+  .field-input {
+    @apply w-full rounded-lg border border-espresso/15 bg-paper-50 px-3.5 py-2.5 text-sm text-ink
+           placeholder:text-ink/35 transition focus:border-turmeric focus:ring-2 focus:ring-turmeric/25;
+  }
+  .card {
+    @apply rounded-2xl border border-espresso/10 bg-paper-50 shadow-card;
+  }
+}

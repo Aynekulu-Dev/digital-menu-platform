@@ -1,0 +1,141 @@
+:root {
+  --espresso: #2B1B14;
+  --espresso-800: #3D2A1F;
+  --paper: #FAF0DC;
+  --paper-50: #FFFBF3;
+  --turmeric: #D9A62E;
+  --turmeric-400: #E4BC5C;
+  --berbere: #A6321C;
+  --berbere-600: #872715;
+  --ink: #211712;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+  padding-bottom: 5rem;
+}
+
+h1, h2 { font-family: var(--font-display); margin: 0; }
+
+.loading, .error-state {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(250,240,220,0.5);
+  background: var(--espresso);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.error-state .title { font-family: var(--font-display); font-style: italic; font-size: 1.5rem; color: var(--paper); margin-bottom: 0.5rem; }
+
+.hero {
+  background: var(--espresso);
+  color: var(--paper);
+  text-align: center;
+  padding: 3rem 1.5rem 2rem;
+}
+.hero .eyebrow {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--turmeric);
+  margin-bottom: 0.75rem;
+}
+.hero h1 { font-style: italic; font-size: 2.25rem; line-height: 1.15; }
+
+.nav-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(250,240,220,0.95);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(43,27,20,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem 0;
+  gap: 0.5rem;
+}
+.cat-scroller {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding-bottom: 0.75rem;
+  flex: 1;
+  scrollbar-width: none;
+}
+.cat-scroller::-webkit-scrollbar { display: none; }
+.cat-pill {
+  white-space: nowrap;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: none;
+  background: rgba(43,27,20,0.06);
+  color: rgba(33,23,18,0.7);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cat-pill.active { background: var(--espresso); color: var(--paper); }
+
+.lang-toggle {
+  display: flex;
+  border-radius: 999px;
+  background: rgba(43,27,20,0.06);
+  padding: 2px;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+.lang-toggle button {
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(33,23,18,0.5);
+  cursor: pointer;
+}
+.lang-toggle button.active { background: var(--turmeric); color: var(--espresso); }
+
+main { max-width: 640px; margin: 0 auto; padding: 0 1.25rem; }
+.empty-note { text-align: center; color: rgba(33,23,18,0.4); font-size: 0.9rem; padding: 4rem 0; }
+
+section.cat-section { padding-top: 2.5rem; }
+section.cat-section:first-of-type { padding-top: 1.5rem; }
+section.cat-section h2 { font-size: 1.5rem; margin-bottom: 1rem; }
+
+ul.item-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1.25rem; }
+.item-row { display: flex; gap: 1rem; }
+.item-row.sold-out { opacity: 0.45; }
+.item-row img {
+  width: 5rem; height: 5rem; border-radius: 0.75rem; object-fit: cover; flex-shrink: 0;
+  background: rgba(43,27,20,0.05);
+}
+.item-body { min-width: 0; flex: 1; }
+.item-title-row { display: flex; align-items: baseline; }
+.item-title { font-family: var(--font-display); font-size: 1.05rem; }
+.leader { flex: 1; border-bottom: 1px dotted rgba(33,23,18,0.25); transform: translateY(-4px); margin: 0 0.5rem; }
+.item-price { font-family: var(--font-mono); font-size: 0.9rem; color: var(--espresso); flex-shrink: 0; }
+.item-desc { font-size: 0.85rem; color: rgba(33,23,18,0.5); margin: 0.25rem 0 0; line-height: 1.4; }
+.sold-out-badge {
+  display: inline-block; margin-top: 0.35rem; font-size: 0.68rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--berbere-600);
+}
+
+footer { max-width: 640px; margin: 3.5rem auto 0; padding: 0 1.25rem; text-align: center; }
+footer p { font-size: 0.75rem; color: rgba(33,23,18,0.3); }

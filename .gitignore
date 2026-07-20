@@ -1,0 +1,36 @@
+cat > .gitignore << 'EOF'
+# --- Python / backend ---
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# --- Node / frontend ---
+node_modules/
+dist/
+build/
+*.local
+
+# --- Env files (never commit secrets) ---
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# --- Editor / OS junk ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# --- Logs ---
+*.log
+npm-debug.log*
+
+# --- Misc local artifacts ---
+qr-test.png
+EOF

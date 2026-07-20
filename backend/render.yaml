@@ -1,0 +1,63 @@
+databases:
+  - name: menu-platform-db
+    plan: free
+    databaseName: menu_platform
+    user: menu_platform_user
+
+# Render's managed Redis-compatible store. This is what app/cache.py talks
+# to for the menu cache + scan anti-spam dedupe (Section 3.3.3). Free tier
+# is fine for MVP traffic; the app degrades gracefully to cache-less mode
+# if this is ever removed (just unset REDIS_URL on the web service).
+keyValues:
+  - name: menu-platform-cache
+    plan: free
+    ipAllowList: []
+
+services:
+  - type: web
+    name: menu-platform-api
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: menu-platform-db
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: REDIS_URL
+        fromService:
+          name: menu-platform-cache
+          type: keyvalue
+          property: connectionString
+      - key: MENU_CACHE_TTL_SECONDS
+        value: "60"
+      - key: SCAN_DEDUPE_WINDOW_SECONDS
+        value: "1200"
+      - key: PUBLIC_MENU_BASE_URL
+        value: "https://menu.yourplatform.com"   # point this at the public-menu static site (see public-menu/README.md)
+
+  # Background job (Section 3.3.1 reset_monthly_scans / Celery equivalent —
+  # this deployment has no Celery worker, so it's a scheduled one-shot job).
+  - type: cron
+    name: menu-platform-reset-scans
+    runtime: python
+    plan: free
+    schedule: "0 0 1 * *"   # 00:00 UTC on the 1st of every month, start of each billing cycle
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python -m scripts.reset_monthly_scans"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: menu-platform-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.11.9"

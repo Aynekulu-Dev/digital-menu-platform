@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: menu-platform-public
+    runtime: static
+    buildCommand: "echo 'no build step — static files served as-is'"
+    staticPublishPath: ./
+    routes:
+      # Everything under /menu/<slug> (and /menu/<slug>?table=..) is served
+      # by the same index.html shell; app.js reads the slug out of
+      # window.location.pathname itself, so no server-side templating is
+      # needed.
+      - type: rewrite
+        source: /menu/*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: "public, max-age=300"
