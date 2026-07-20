@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -13,8 +14,10 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 @router.post("/login/", response_model=TokenResponse)
 def manager_login(payload: ManagerLoginRequest, db: Session = Depends(get_db)):
     """POST /api/v1/auth/login/ — Section 4.2.1, Manager Authentication."""
+    # Emails are matched case-insensitively so "Owner@X.com" and
+    # "owner@x.com" are treated as the same login.
     restaurant = db.query(models.Restaurant).filter(
-        models.Restaurant.manager_email == payload.manager_email
+        func.lower(models.Restaurant.manager_email) == payload.manager_email.strip().lower()
     ).first()
 
     if not restaurant or not verify_password(payload.password, restaurant.password_hash):
@@ -35,7 +38,7 @@ def super_admin_login(payload: SuperAdminLoginRequest, db: Session = Depends(get
     /super-admin/... endpoints in Section 4.2.1 and 4.2.7.
     """
     admin = db.query(models.SuperAdmin).filter(
-        models.SuperAdmin.admin_email == payload.admin_email
+        func.lower(models.SuperAdmin.admin_email) == payload.admin_email.strip().lower()
     ).first()
 
     if not admin or not verify_password(payload.password, admin.password_hash):
