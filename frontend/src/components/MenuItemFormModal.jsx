@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
 import Modal from './Modal'
+import { api } from '../api/client'
+import { useToast } from './Toast'
 
-export default function MenuItemFormModal({ initial, categories, onClose, onSubmit, submitting }) {
+export default function MenuItemFormModal({ initial, categories, token, onClose, onSubmit, submitting }) {
+  const { push } = useToast()
   const [form, setForm] = useState({
     category_id: initial?.category_id ?? categories[0]?.id ?? '',
     title_en: initial?.title_en || '',
@@ -13,8 +16,36 @@ export default function MenuItemFormModal({ initial, categories, onClose, onSubm
     is_available: initial?.is_available ?? true,
   })
   const [errors, setErrors] = useState({})
+  const [uploading, setUploading] = useState(false)
+  const [showManualUrl, setShowManualUrl] = useState(false)
 
   const isEdit = Boolean(initial)
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file later
+    if (!file) return
+
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      push('Only JPG or PNG images are supported.', 'error')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      push('Image is too large — please use a file under 5MB.', 'error')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const secureUrl = await api.uploadImageToCloudinary(file)
+      setForm((f) => ({ ...f, image_s3_url: secureUrl }))
+      push('Photo uploaded.', 'success')
+    } catch (err) {
+      push(err.message || 'Could not upload this image.', 'error')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -95,6 +126,57 @@ export default function MenuItemFormModal({ initial, categories, onClose, onSubm
           </div>
         </div>
 
+        <div>
+          <label className="field-label">Photo</label>
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-16 rounded-lg bg-paper border border-espresso/10 flex items-center justify-center overflow-hidden shrink-0">
+              {uploading ? (
+                <span className="text-xs text-ink/40">Uploading…</span>
+              ) : form.image_s3_url ? (
+                <img src={form.image_s3_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xs text-ink/30">No photo</span>
+              )}
+            </div>
+            <div className="flex-1 flex flex-col gap-1.5">
+              <label className="btn-secondary text-center cursor-pointer">
+                {uploading ? 'Uploading…' : form.image_s3_url ? 'Replace photo' : 'Upload photo from device'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={handleFileChange}
+                />
+              </label>
+              {form.image_s3_url && !uploading && (
+                <button
+                  type="button"
+                  className="text-xs text-berbere-600 hover:underline self-start"
+                  onClick={() => setForm((f) => ({ ...f, image_s3_url: '' }))}
+                >
+                  Remove photo
+                </button>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="text-xs text-ink/40 hover:text-ink/60 hover:underline mt-2"
+            onClick={() => setShowManualUrl((v) => !v)}
+          >
+            {showManualUrl ? 'Hide manual URL field' : 'Have an image URL already? Paste it instead'}
+          </button>
+          {showManualUrl && (
+            <input
+              className="field-input mt-1.5"
+              value={form.image_s3_url}
+              onChange={(e) => setForm({ ...form, image_s3_url: e.target.value })}
+              placeholder="https://…/kitfo.jpg"
+            />
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label">Price (ETB)</label>
@@ -108,15 +190,6 @@ export default function MenuItemFormModal({ initial, categories, onClose, onSubm
               required
             />
             {errors.price && <p className="text-xs text-berbere mt-1">{errors.price[0]}</p>}
-          </div>
-          <div>
-            <label className="field-label">Image URL</label>
-            <input
-              className="field-input"
-              value={form.image_s3_url}
-              onChange={(e) => setForm({ ...form, image_s3_url: e.target.value })}
-              placeholder="https://…/kitfo.jpg"
-            />
           </div>
         </div>
 
@@ -133,7 +206,7 @@ export default function MenuItemFormModal({ initial, categories, onClose, onSubm
         {errors._general && <p className="text-sm text-berbere">{errors._general}</p>}
 
         <div className="flex gap-3 pt-2">
-          <button type="submit" className="btn-primary flex-1" disabled={submitting || categories.length === 0}>
+          <button type="submit" className="btn-primary flex-1" disabled={submitting || uploading || categories.length === 0}>
             {submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Add to menu'}
           </button>
           <button type="button" className="btn-secondary" onClick={onClose}>

@@ -76,6 +76,29 @@ export const api = {
       method: 'PATCH', token, body: { is_active },
     }),
 
+  // --- Media (Cloudinary unsigned upload — free tier, no backend secret needed) ---
+  uploadImageToCloudinary: async (file) => {
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+    if (!cloudName || !uploadPreset || cloudName === 'your-cloud-name') {
+      throw new ApiError(422, 'MEDIA_CONFIG_MISSING', 'Image uploads aren\u2019t configured yet — set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET.')
+    }
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('upload_preset', uploadPreset)
+    formData.append('folder', 'menu-item-photos')
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: 'POST',
+      body: formData,
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      throw new ApiError(res.status, 'CLOUDINARY_UPLOAD_FAILED', data?.error?.message || 'The image upload failed. Please try again.')
+    }
+    return data.secure_url
+  },
+
   // --- Public ---
   getPublicMenu: (slug) => request(`/api/v1/public/menu/${slug}/`, { isPublic: true }),
 

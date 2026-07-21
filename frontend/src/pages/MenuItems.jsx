@@ -193,6 +193,7 @@ export default function MenuItems() {
         <MenuItemFormModal
           initial={modal === 'create' ? null : modal}
           categories={categories}
+          token={token}
           onClose={() => setModal(null)}
           onSubmit={modal === 'create' ? handleCreate : handleUpdate}
           submitting={submitting}
