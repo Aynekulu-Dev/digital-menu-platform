@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -53,6 +54,20 @@ def create_tenant(
     tier = payload.subscription_tier.upper()
     if tier not in settings.tier_limits:
         raise validation_failed({"subscription_tier": [f"Must be one of {list(settings.tier_limits)}."]})
+
+    # Check slug/email individually first so we can report precisely which
+    # one collides, instead of flagging both fields on any IntegrityError.
+    conflicts: dict[str, list[str]] = {}
+    if db.query(models.Restaurant).filter(
+        models.Restaurant.unique_slug == payload.unique_slug
+    ).first():
+        conflicts["unique_slug"] = ["A restaurant with this slug already exists."]
+    if db.query(models.Restaurant).filter(
+        func.lower(models.Restaurant.manager_email) == payload.manager_email.strip().lower()
+    ).first():
+        conflicts["manager_email"] = ["This email identifier is already assigned to another tenant context."]
+    if conflicts:
+        raise validation_failed(conflicts)
 
     restaurant = models.Restaurant(
         id=uuid.uuid4(),
