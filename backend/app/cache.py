@@ -19,6 +19,7 @@ import redis
 from app.config import settings
 
 _client: "redis.Redis | None" = None
+
 _client_checked = False
 
 
