@@ -6,40 +6,24 @@ from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
 from app import models
-from app.auth import hash_password
 from app.config import settings
 from app.dependencies import get_current_super_admin
+from app.email_service import send_invite_email
 from app.exceptions import validation_failed, APIError
+from app.tokens import create_token
 from app.schemas import (
     TenantCreateRequest, RestaurantOut, ActiveQuotaOut,
-    TenantComplianceUpdateRequest, TenantStatusUpdateRequest,
+    TenantComplianceUpdateRequest, TenantStatusUpdateRequest, MessageResponse,
 )
 
 router = APIRouter(prefix="/api/v1/super-admin", tags=["super-admin"])
 
 
-@router.get("/tenants/")
-def list_tenants(
-    db: Session = Depends(get_db),
-    admin: models.SuperAdmin = Depends(get_current_super_admin),
-):
-    """
-    GET /api/v1/super-admin/tenants/ — was missing (the frontend api client
-    already had listTenants() wired up, but nothing on the backend served
-    it, so no Super Admin UI could be built). Returns every tenant with its
-    quota, newest first, so the dashboard can list + manage them.
-    """
-    restaurants = db.query(models.Restaurant).order_by(models.Restaurant.created_at.desc()).all()
+def _serialize_tenant(r: models.Restaurant) -> dict:
     return {
-        "status": "success",
-        "data": [
-            {
-                "restaurant": RestaurantOut.model_validate(r).model_dump(mode="json"),
-                "active_quota": ActiveQuotaOut.model_validate(r.active_quota).model_dump(mode="json")
-                if r.active_quota else None,
-            }
-            for r in restaurants
-        ],
+        "restaurant": RestaurantOut.model_validate(r).model_dump(mode="json"),
+        "active_quota": ActiveQuotaOut.model_validate(r.active_quota).model_dump(mode="json")
+        if r.active_quota else None,
     }
 
 
@@ -48,21 +32,16 @@ def list_tenants(
     db: Session = Depends(get_db),
     admin: models.SuperAdmin = Depends(get_current_super_admin),
 ):
-    """
-    GET /api/v1/super-admin/tenants/ — was never in the original spec's
-    endpoint list (Section 4.2.1 only documents create/compliance/status),
-    but the super-admin UI needs somewhere to read the tenant roster from.
-    """
     restaurants = db.query(models.Restaurant).order_by(models.Restaurant.created_at.desc()).all()
-    data = [
-        {
-            "restaurant": RestaurantOut.model_validate(r).model_dump(mode="json"),
-            "active_quota": ActiveQuotaOut.model_validate(r.active_quota).model_dump(mode="json")
-            if r.active_quota else None,
-        }
-        for r in restaurants
-    ]
-    return {"status": "success", "data": data}
+    return {"status": "success", "data": [_serialize_tenant(r) for r in restaurants]}
+
+
+def _send_invite(db: Session, restaurant: models.Restaurant) -> None:
+    raw_token = create_token(
+        db, restaurant.id, models.TokenPurpose.INVITE, settings.invite_token_expire_hours
+    )
+    accept_url = f"{settings.frontend_base_url}/accept-invite?token={raw_token}"
+    send_invite_email(restaurant.manager_email, restaurant.restaurant_name, accept_url)
 
 
 @router.post("/tenants/", status_code=201)
@@ -71,7 +50,6 @@ def create_tenant(
     db: Session = Depends(get_db),
     admin: models.SuperAdmin = Depends(get_current_super_admin),
 ):
-    """POST /api/v1/super-admin/tenants/ — Section 4.2.1, Tenant Manual Onboarding."""
     tier = payload.subscription_tier.upper()
     if tier not in settings.tier_limits:
         raise validation_failed({"subscription_tier": [f"Must be one of {list(settings.tier_limits)}."]})
@@ -82,7 +60,7 @@ def create_tenant(
         unique_slug=payload.unique_slug,
         subscription_tier=tier,
         manager_email=payload.manager_email,
-        password_hash=hash_password(payload.password),
+        password_hash=None,
         monthly_receipt_status="PENDING",
         created_by_id=admin.id,
         updated_by_id=admin.id,
@@ -108,13 +86,13 @@ def create_tenant(
     db.refresh(restaurant)
     db.refresh(quota)
 
+    _send_invite(db, restaurant)
+
     return {
         "status": "success",
-        "message": "Multi-tenant restaurant workspace and active quota system successfully provisioned.",
-        "data": {
-            "restaurant": RestaurantOut.model_validate(restaurant).model_dump(mode="json"),
-            "active_quota": ActiveQuotaOut.model_validate(quota).model_dump(mode="json"),
-        },
+        "message": "Multi-tenant restaurant workspace and active quota system successfully "
+        "provisioned. An invite email was sent to the manager to set their password.",
+        "data": _serialize_tenant(restaurant),
     }
 
 
@@ -129,6 +107,17 @@ def _get_tenant_or_404(db: Session, restaurant_id: str) -> models.Restaurant:
     return restaurant
 
 
+@router.post("/tenants/{restaurant_id}/resend-invite/", response_model=MessageResponse)
+def resend_invite(
+    restaurant_id: str,
+    db: Session = Depends(get_db),
+    admin: models.SuperAdmin = Depends(get_current_super_admin),
+):
+    restaurant = _get_tenant_or_404(db, restaurant_id)
+    _send_invite(db, restaurant)
+    return {"status": "success", "message": f"Invite email resent to {restaurant.manager_email}."}
+
+
 @router.patch("/tenants/{restaurant_id}/compliance/")
 def update_compliance(
     restaurant_id: str,
@@ -136,7 +125,6 @@ def update_compliance(
     db: Session = Depends(get_db),
     admin: models.SuperAdmin = Depends(get_current_super_admin),
 ):
-    """PATCH /api/v1/super-admin/tenants/{id}/compliance/ — Section 4.2.1."""
     restaurant = _get_tenant_or_404(db, restaurant_id)
     status_value = payload.monthly_receipt_status.upper()
     if status_value not in ("PENDING", "APPROVED", "DELINQUENT"):
@@ -162,7 +150,6 @@ def update_status(
     db: Session = Depends(get_db),
     admin: models.SuperAdmin = Depends(get_current_super_admin),
 ):
-    """PATCH /api/v1/super-admin/tenants/{id}/status/ — Section 4.2.7, Activation/Deactivation."""
     restaurant = _get_tenant_or_404(db, restaurant_id)
     restaurant.is_active = payload.is_active
     restaurant.updated_by_id = admin.id

@@ -23,9 +23,6 @@ class ReceiptStatus(str, enum.Enum):
     DELINQUENT = "DELINQUENT"
 
 
-# ---------------------------------------------------------------------------
-# Table 0: super_admins  (Section 3.4, Data Dictionary Table 0)
-# ---------------------------------------------------------------------------
 class SuperAdmin(Base):
     __tablename__ = "super_admins"
 
@@ -37,9 +34,6 @@ class SuperAdmin(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
-# ---------------------------------------------------------------------------
-# Table 1: restaurants (tenant profile) (Section 3.4, Table 1)
-# ---------------------------------------------------------------------------
 class Restaurant(Base):
     __tablename__ = "restaurants"
 
@@ -49,7 +43,9 @@ class Restaurant(Base):
     subscription_tier = Column(String(20), nullable=False)
     is_active = Column(Boolean, nullable=False, default=True)
     manager_email = Column(String(255), nullable=False, unique=True, index=True)
-    password_hash = Column(String(512), nullable=False)
+    # Nullable: a newly-onboarded tenant has no password yet -- the manager
+    # sets one for the first time via the invite-link flow.
+    password_hash = Column(String(512), nullable=True)
     monthly_receipt_status = Column(String(20), nullable=False, default=ReceiptStatus.PENDING.value)
 
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -65,13 +61,14 @@ class Restaurant(Base):
 
     @property
     def is_compliant(self) -> bool:
-        """Mirrors Restaurant.is_compliant() from Section 3.3.1."""
         return self.is_active and self.monthly_receipt_status != ReceiptStatus.DELINQUENT.value
 
+    @property
+    def has_password(self) -> bool:
+        """False while a manager invite is still pending acceptance."""
+        return self.password_hash is not None
 
-# ---------------------------------------------------------------------------
-# Table 2: active_quotas (Section 3.4, Table 2)
-# ---------------------------------------------------------------------------
+
 class ActiveQuota(Base):
     __tablename__ = "active_quotas"
 
@@ -89,9 +86,6 @@ class ActiveQuota(Base):
         return self.curr_item_count < self.max_menu_items
 
 
-# ---------------------------------------------------------------------------
-# Table 3: categories (Section 3.4, Table 3)
-# ---------------------------------------------------------------------------
 class Category(Base):
     __tablename__ = "categories"
 
@@ -111,9 +105,6 @@ class Category(Base):
     )
 
 
-# ---------------------------------------------------------------------------
-# Table 4: menu_items (Section 3.4, Table 4)
-# ---------------------------------------------------------------------------
 class MenuItem(Base):
     __tablename__ = "menu_items"
 
@@ -138,3 +129,23 @@ class MenuItem(Base):
     __table_args__ = (
         Index("ix_menu_items_restaurant_category", "restaurant_id", "category_id"),
     )
+
+
+class TokenPurpose(str, enum.Enum):
+    INVITE = "INVITE"
+    RESET = "RESET"
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    restaurant_id = Column(UUID(as_uuid=True), ForeignKey("restaurants.id", ondelete="CASCADE"),
+                            nullable=False, index=True)
+    token_hash = Column(String(128), nullable=False, unique=True, index=True)
+    purpose = Column(String(20), nullable=False)  # INVITE | RESET
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    restaurant = relationship("Restaurant")

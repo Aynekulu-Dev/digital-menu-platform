@@ -6,6 +6,7 @@ const NAV = [
   { to: '/dashboard', label: 'Overview', end: true },
   { to: '/dashboard/categories', label: 'Categories' },
   { to: '/dashboard/menu-items', label: 'Menu items' },
+  { to: '/dashboard/account', label: 'Account' },
 ]
 
 export default function Sidebar() {

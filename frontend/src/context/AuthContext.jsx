@@ -25,6 +25,13 @@ export function AuthProvider({ children }) {
     return next
   }, [])
 
+  const setSessionFromAuthResponse = useCallback((res) => {
+    const next = { token: res.token, restaurant: res.restaurant_context }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    setSession(next)
+    return next
+  }, [])
+
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY)
     setSession(null)
@@ -37,6 +44,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: Boolean(session?.token),
     login,
     logout,
+    setSessionFromAuthResponse,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

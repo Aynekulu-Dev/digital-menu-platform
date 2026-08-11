@@ -40,22 +40,26 @@ async function request(path, { method = 'GET', token, body, isPublic = false } =
 }
 
 export const api = {
-  // --- Auth ---
   managerLogin: (manager_email, password) =>
     request('/api/v1/auth/login/', { method: 'POST', body: { manager_email, password } }),
   superAdminLogin: (admin_email, password) =>
     request('/api/v1/auth/super-admin/login/', { method: 'POST', body: { admin_email, password } }),
+  acceptInvite: (token, new_password) =>
+    request('/api/v1/auth/accept-invite/', { method: 'POST', body: { token, new_password } }),
+  forgotPassword: (manager_email) =>
+    request('/api/v1/auth/forgot-password/', { method: 'POST', body: { manager_email } }),
+  resetPassword: (token, new_password) =>
+    request('/api/v1/auth/reset-password/', { method: 'POST', body: { token, new_password } }),
+  changePassword: (token, current_password, new_password) =>
+    request('/api/v1/auth/change-password/', { method: 'POST', token, body: { current_password, new_password } }),
 
-  // --- Workspace (self-service tenant info) ---
   getMyWorkspace: (token) => request('/api/v1/workspace/me/', { token }),
 
-  // --- Categories (tenant-scoped) ---
   listCategories: (token) => request('/api/v1/categories/', { token }),
   createCategory: (token, data) => request('/api/v1/categories/', { method: 'POST', token, body: data }),
   updateCategory: (token, id, data) => request(`/api/v1/categories/${id}/`, { method: 'PATCH', token, body: data }),
   deleteCategory: (token, id) => request(`/api/v1/categories/${id}/`, { method: 'DELETE', token }),
 
-  // --- Menu items (tenant-scoped) ---
   listMenuItems: (token) => request('/api/v1/menu-items/', { token }),
   createMenuItem: (token, data) => request('/api/v1/menu-items/', { method: 'POST', token, body: data }),
   updateMenuItem: (token, id, data) => request(`/api/v1/menu-items/${id}/`, { method: 'PATCH', token, body: data }),
@@ -63,10 +67,11 @@ export const api = {
   toggleAvailability: (token, id) =>
     request(`/api/v1/menu-items/${id}/toggle-availability/`, { method: 'PATCH', token }),
 
-  // --- Super Admin (tenant provisioning & billing/status control) ---
   listTenants: (token) => request('/api/v1/super-admin/tenants/', { token }),
   createTenant: (token, data) =>
     request('/api/v1/super-admin/tenants/', { method: 'POST', token, body: data }),
+  resendInvite: (token, id) =>
+    request(`/api/v1/super-admin/tenants/${id}/resend-invite/`, { method: 'POST', token }),
   updateTenantCompliance: (token, id, monthly_receipt_status) =>
     request(`/api/v1/super-admin/tenants/${id}/compliance/`, {
       method: 'PATCH', token, body: { monthly_receipt_status },
@@ -76,7 +81,6 @@ export const api = {
       method: 'PATCH', token, body: { is_active },
     }),
 
-  // --- Media (Cloudinary unsigned upload — free tier, no backend secret needed) ---
   uploadImageToCloudinary: async (file) => {
     const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
     const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
@@ -99,10 +103,8 @@ export const api = {
     return data.secure_url
   },
 
-  // --- Public ---
   getPublicMenu: (slug) => request(`/api/v1/public/menu/${slug}/`, { isPublic: true }),
 
-  // --- QR code (authenticated PNG — fetched as a blob, not JSON) ---
   getMyRestaurantQrBlob: async (token, table) => {
     const qs = table ? `?table=${encodeURIComponent(table)}` : ''
     const res = await fetch(`${BASE_URL}/api/v1/qr/my-restaurant.png${qs}`, {

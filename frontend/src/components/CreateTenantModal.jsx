@@ -12,7 +12,6 @@ export default function CreateTenantModal({ token, onClose, onCreated }) {
     unique_slug: '',
     subscription_tier: 'FREE',
     manager_email: '',
-    password: '',
   })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
@@ -27,7 +26,6 @@ export default function CreateTenantModal({ token, onClose, onCreated }) {
     setForm((f) => ({
       ...f,
       restaurant_name,
-      // only auto-fill the slug if the person hasn't hand-edited it yet
       unique_slug: f._slugTouched ? f.unique_slug : slugify(restaurant_name),
     }))
   }
@@ -42,9 +40,8 @@ export default function CreateTenantModal({ token, onClose, onCreated }) {
         unique_slug: form.unique_slug,
         subscription_tier: form.subscription_tier,
         manager_email: form.manager_email,
-        password: form.password,
       })
-      push('Restaurant workspace created.', 'success')
+      push('Restaurant workspace created. An invite email was sent to the manager.', 'success')
       onCreated()
       onClose()
     } catch (err) {
@@ -59,7 +56,7 @@ export default function CreateTenantModal({ token, onClose, onCreated }) {
   }
 
   return (
-    <Modal title="Onboard a new restaurant" subtitle="Provisions a workspace, manager login, and starting quota." onClose={onClose}>
+    <Modal title="Onboard a new restaurant" subtitle="Provisions a workspace and starting quota, then emails the manager a link to set their password." onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="field-label">Restaurant name</label>
@@ -91,12 +88,9 @@ export default function CreateTenantModal({ token, onClose, onCreated }) {
           <label className="field-label">Manager email</label>
           <input type="email" className="field-input" value={form.manager_email} onChange={set('manager_email')} required />
           {errors.manager_email && <p className="text-xs text-berbere-600 mt-1">{errors.manager_email[0]}</p>}
-        </div>
-
-        <div>
-          <label className="field-label">Temporary password</label>
-          <input type="text" className="field-input" value={form.password} onChange={set('password')} required minLength={8} />
-          <p className="text-xs text-ink/40 mt-1">Share this with the restaurant manager — they can't reset it themselves yet.</p>
+          <p className="text-xs text-ink/40 mt-1">
+            An invite link will be emailed here so the manager can set their own password.
+          </p>
         </div>
 
         <div className="flex gap-3 pt-2">

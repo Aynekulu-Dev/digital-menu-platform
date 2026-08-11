@@ -6,9 +6,6 @@ from typing import Optional, List
 from pydantic import BaseModel, EmailStr, ConfigDict
 
 
-# ---------------------------------------------------------------------------
-# Auth
-# ---------------------------------------------------------------------------
 class ManagerLoginRequest(BaseModel):
     manager_email: EmailStr
     password: str
@@ -26,9 +23,30 @@ class TokenResponse(BaseModel):
     admin_context: Optional[dict] = None
 
 
-# ---------------------------------------------------------------------------
-# Restaurant / Tenant
-# ---------------------------------------------------------------------------
+class AcceptInviteRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    manager_email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class MessageResponse(BaseModel):
+    status: str = "success"
+    message: str
+
+
 class RestaurantOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -39,6 +57,7 @@ class RestaurantOut(BaseModel):
     is_active: bool
     manager_email: EmailStr
     monthly_receipt_status: str
+    has_password: bool
     created_at: datetime.datetime
     updated_at: datetime.datetime
     created_by_id: Optional[int] = None
@@ -50,7 +69,6 @@ class TenantCreateRequest(BaseModel):
     unique_slug: str
     subscription_tier: str  # FREE | BASIC | STANDARD
     manager_email: EmailStr
-    password: str
 
 
 class ActiveQuotaOut(BaseModel):
@@ -64,16 +82,13 @@ class ActiveQuotaOut(BaseModel):
 
 
 class TenantComplianceUpdateRequest(BaseModel):
-    monthly_receipt_status: str  # PENDING | APPROVED | DELINQUENT
+    monthly_receipt_status: str
 
 
 class TenantStatusUpdateRequest(BaseModel):
     is_active: bool
 
 
-# ---------------------------------------------------------------------------
-# Category
-# ---------------------------------------------------------------------------
 class CategoryCreateRequest(BaseModel):
     name_en: str
     name_am: str
@@ -98,9 +113,6 @@ class CategoryOut(BaseModel):
     updated_at: datetime.datetime
 
 
-# ---------------------------------------------------------------------------
-# Menu Item
-# ---------------------------------------------------------------------------
 class MenuItemCreateRequest(BaseModel):
     category_id: int
     title_en: str
@@ -140,9 +152,6 @@ class MenuItemOut(BaseModel):
     updated_at: datetime.datetime
 
 
-# ---------------------------------------------------------------------------
-# Public menu
-# ---------------------------------------------------------------------------
 class PublicMenuItemOut(BaseModel):
     id: int
     title_en: str
@@ -168,9 +177,6 @@ class PublicMenuOut(BaseModel):
     menu_categories: List[PublicMenuCategoryOut]
 
 
-# ---------------------------------------------------------------------------
-# Media
-# ---------------------------------------------------------------------------
 class PresignedUrlRequest(BaseModel):
     file_name: str
     content_type: str

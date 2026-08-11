@@ -1,0 +1,1 @@
+export const SUPER_ADMIN_PATH = (import.meta.env.VITE_SUPER_ADMIN_PATH || '/super-admin').replace(/\/$/, '')

@@ -11,6 +11,19 @@ export default function TenantManageModal({ token, tenant, onClose, onUpdated })
   const [isActive, setIsActive] = useState(tenant.restaurant.is_active)
   const [savingCompliance, setSavingCompliance] = useState(false)
   const [savingStatus, setSavingStatus] = useState(false)
+  const [resendingInvite, setResendingInvite] = useState(false)
+
+  const resendInvite = async () => {
+    setResendingInvite(true)
+    try {
+      await api.resendInvite(token, tenant.restaurant.id)
+      push(`Invite email resent to ${tenant.restaurant.manager_email}.`, 'success')
+    } catch (err) {
+      push(err.message || 'Could not resend the invite.', 'error')
+    } finally {
+      setResendingInvite(false)
+    }
+  }
 
   const saveCompliance = async () => {
     setSavingCompliance(true)
@@ -48,6 +61,24 @@ export default function TenantManageModal({ token, tenant, onClose, onUpdated })
             {'  ·  '}
             Scans: <span className="font-mono">{tenant.active_quota?.scan_count ?? 0}</span>
           </p>
+        </div>
+
+        <div className="rounded-lg border border-espresso/10 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-espresso">
+                {tenant.restaurant.has_password ? 'Account activated' : 'Invite pending'}
+              </p>
+              <p className="text-xs text-ink/40 mt-0.5">
+                {tenant.restaurant.has_password
+                  ? `${tenant.restaurant.manager_email} has set a password.`
+                  : `${tenant.restaurant.manager_email} hasn't set a password yet.`}
+              </p>
+            </div>
+            <button onClick={resendInvite} disabled={resendingInvite} className="btn-secondary shrink-0 text-sm">
+              {resendingInvite ? 'Sending…' : tenant.restaurant.has_password ? 'Resend reset link' : 'Resend invite'}
+            </button>
+          </div>
         </div>
 
         <div>

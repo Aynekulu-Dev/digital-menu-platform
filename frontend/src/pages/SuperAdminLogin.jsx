@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSuperAdminAuth } from '../context/SuperAdminAuthContext'
+import { SUPER_ADMIN_PATH } from '../superAdminPath'
 
 export default function SuperAdminLogin() {
   const { login } = useSuperAdminAuth()
@@ -16,7 +17,7 @@ export default function SuperAdminLogin() {
     setLoading(true)
     try {
       await login(email, password)
-      navigate('/super-admin')
+      navigate(SUPER_ADMIN_PATH)
     } catch (err) {
       setError(err.message || 'Could not sign in.')
     } finally {

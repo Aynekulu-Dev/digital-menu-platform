@@ -34,3 +34,6 @@ npm-debug.log*
 # --- Misc local artifacts ---
 qr-test.png
 EOF
+
+# ReCode local database
+.recode

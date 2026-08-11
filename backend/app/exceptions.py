@@ -2,12 +2,6 @@ from fastapi import HTTPException
 
 
 class APIError(HTTPException):
-    """
-    A thin wrapper so every error response in the API follows the same
-    {"status": "error", "code": ..., "message": ..., "details": ...} shape
-    used throughout Chapter 4 of the spec.
-    """
-
     def __init__(self, status_code: int, code: str, message: str, details: dict | None = None):
         body = {"status": "error", "code": code, "message": message}
         if details is not None:
@@ -17,6 +11,23 @@ class APIError(HTTPException):
 
 def invalid_credentials():
     return APIError(401, "INVALID_CREDENTIALS", "The provided email or password combination is incorrect.")
+
+
+def account_not_activated():
+    return APIError(
+        401,
+        "ACCOUNT_NOT_ACTIVATED",
+        "This account hasn't set a password yet. Check your email for the setup link, "
+        "or ask the platform owner to resend your invite.",
+    )
+
+
+def invalid_or_expired_token():
+    return APIError(
+        400,
+        "INVALID_OR_EXPIRED_TOKEN",
+        "This link is invalid or has expired. Please request a new one.",
+    )
 
 
 def subscription_locked():

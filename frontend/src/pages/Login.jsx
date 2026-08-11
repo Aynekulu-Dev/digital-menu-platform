@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
@@ -50,7 +50,12 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="field-label">Password</label>
+            <div className="flex items-center justify-between">
+              <label className="field-label">Password</label>
+              <Link to="/forgot-password" className="text-xs text-espresso/50 hover:text-espresso">
+                Forgot password?
+              </Link>
+            </div>
             <input
               type="password"
               className="field-input"
