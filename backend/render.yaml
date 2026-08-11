@@ -44,6 +44,26 @@ services:
         value: "1200"
       - key: PUBLIC_MENU_BASE_URL
         value: "https://menu.yourplatform.com"   # point this at the public-menu static site (see public-menu/README.md)
+      - key: SMTP_HOST
+        sync: false   # set in Render dashboard, not committed to git
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM_EMAIL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM_EMAIL
+        sync: false
 
   # Background job (Section 3.3.1 reset_monthly_scans / Celery equivalent —
   # this deployment has no Celery worker, so it's a scheduled one-shot job).
