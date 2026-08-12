@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends
@@ -16,6 +17,8 @@ from app.schemas import (
     TenantCreateRequest, RestaurantOut, ActiveQuotaOut,
     TenantComplianceUpdateRequest, TenantStatusUpdateRequest, MessageResponse,
 )
+
+logger = logging.getLogger("app.super_admin")
 
 router = APIRouter(prefix="/api/v1/super-admin", tags=["super-admin"])
 
@@ -67,6 +70,8 @@ def create_tenant(
     ).first():
         conflicts["manager_email"] = ["This email identifier is already assigned to another tenant context."]
     if conflicts:
+        logger.error("create_tenant pre-check conflicts (slug=%r, email=%r): %s",
+                     payload.unique_slug, payload.manager_email, conflicts)
         raise validation_failed(conflicts)
 
     restaurant = models.Restaurant(
@@ -83,8 +88,10 @@ def create_tenant(
     db.add(restaurant)
     try:
         db.flush()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
+        logger.error("create_tenant flush IntegrityError (slug=%r, email=%r): %s",
+                     payload.unique_slug, payload.manager_email, e.orig or e)
         raise validation_failed({
             "unique_slug": ["A restaurant with this slug already exists."],
             "manager_email": ["This email identifier is already assigned to another tenant context."],
