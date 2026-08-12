@@ -1,9 +1,19 @@
 """
 Sends the invite / password-reset emails.
-SMTP ካልተዘጋጀ email ን server console/logs ላይ ብቻ ያሳያል (dev fallback).
+
+Render's free-tier web services block outbound traffic to SMTP ports
+(25, 465, 587), so plain smtplib will time out there even with correct
+credentials -- see https://render.com/changelog/free-web-services-will-no-longer-allow-outbound-traffic-to-smtp-ports
+We therefore send over HTTPS via the Resend API when RESEND_API_KEY is
+set (works on any plan, including free). If it's not set, we fall back
+to smtplib (fine for local dev or paid Render instances). If neither is
+configured, we just log the email instead of sending it.
 """
+import json
 import logging
 import smtplib
+import urllib.request
+import urllib.error
 from email.message import EmailMessage
 
 from app.config import settings
@@ -11,15 +21,41 @@ from app.config import settings
 logger = logging.getLogger("app.email")
 
 
-def send_email(to_email: str, subject: str, text_body: str, html_body: str | None = None) -> None:
-    if not settings.smtp_host:
-        logger.warning(
-            "SMTP not configured -- printing email instead of sending.\n"
-            "----- EMAIL -----\nTo: %s\nSubject: %s\n\n%s\n-----------------",
-            to_email, subject, text_body,
-        )
-        return
+class EmailSendError(Exception):
+    """Raised when an email genuinely fails to send (not just unconfigured)."""
 
+
+def _send_via_resend(to_email: str, subject: str, text_body: str, html_body: str | None) -> None:
+    payload = {
+        "from": settings.smtp_from_email,
+        "to": [to_email],
+        "subject": subject,
+        "text": text_body,
+    }
+    if html_body:
+        payload["html"] = html_body
+
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {settings.resend_api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status >= 300:
+                raise EmailSendError(f"Resend API returned status {resp.status}")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise EmailSendError(f"Resend API error {e.code}: {body}") from e
+    except urllib.error.URLError as e:
+        raise EmailSendError(f"Could not reach Resend API: {e.reason}") from e
+
+
+def _send_via_smtp(to_email: str, subject: str, text_body: str, html_body: str | None) -> None:
     message = EmailMessage()
     message["From"] = settings.smtp_from_email
     message["To"] = to_email
@@ -28,12 +64,32 @@ def send_email(to_email: str, subject: str, text_body: str, html_body: str | Non
     if html_body:
         message.add_alternative(html_body, subtype="html")
 
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
-        if settings.smtp_use_tls:
-            server.starttls()
-        if settings.smtp_username and settings.smtp_password:
-            server.login(settings.smtp_username, settings.smtp_password)
-        server.send_message(message)
+    try:
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as server:
+            if settings.smtp_use_tls:
+                server.starttls()
+            if settings.smtp_username and settings.smtp_password:
+                server.login(settings.smtp_username, settings.smtp_password)
+            server.send_message(message)
+    except (smtplib.SMTPException, OSError) as e:
+        raise EmailSendError(f"SMTP send failed: {e}") from e
+
+
+def send_email(to_email: str, subject: str, text_body: str, html_body: str | None = None) -> None:
+    if settings.resend_api_key:
+        _send_via_resend(to_email, subject, text_body, html_body)
+        return
+
+    if settings.smtp_host:
+        _send_via_smtp(to_email, subject, text_body, html_body)
+        return
+
+    logger.warning(
+        "No email provider configured (RESEND_API_KEY or SMTP_HOST) -- "
+        "printing email instead of sending.\n"
+        "----- EMAIL -----\nTo: %s\nSubject: %s\n\n%s\n-----------------",
+        to_email, subject, text_body,
+    )
 
 
 def send_invite_email(to_email: str, restaurant_name: str, accept_url: str) -> None:

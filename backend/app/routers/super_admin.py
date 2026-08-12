@@ -9,7 +9,7 @@ from app.database import get_db
 from app import models
 from app.config import settings
 from app.dependencies import get_current_super_admin
-from app.email_service import send_invite_email
+from app.email_service import send_invite_email, EmailSendError
 from app.exceptions import validation_failed, APIError
 from app.tokens import create_token
 from app.schemas import (
@@ -101,12 +101,34 @@ def create_tenant(
     db.refresh(restaurant)
     db.refresh(quota)
 
-    _send_invite(db, restaurant)
+    # The restaurant + quota are already committed above. If the invite email
+    # fails to send (e.g. email provider misconfigured), we must NOT raise
+    # here -- doing so previously turned into a 500 for an already-created
+    # tenant, which looked like "creation failed" even though the row existed,
+    # and the next attempt with the same slug/email would then hit a real
+    # conflict ("already exists"). Instead we report the email failure
+    # separately so the admin can fix config and use resend-invite.
+    invite_sent = True
+    invite_error: str | None = None
+    try:
+        _send_invite(db, restaurant)
+    except EmailSendError as e:
+        invite_sent = False
+        invite_error = str(e)
+
+    message = (
+        "Multi-tenant restaurant workspace and active quota system successfully "
+        "provisioned. An invite email was sent to the manager to set their password."
+        if invite_sent
+        else "Restaurant workspace was created, but the invite email could not be sent. "
+        "Fix the email configuration and use 'resend invite' for this tenant."
+    )
 
     return {
         "status": "success",
-        "message": "Multi-tenant restaurant workspace and active quota system successfully "
-        "provisioned. An invite email was sent to the manager to set their password.",
+        "message": message,
+        "invite_sent": invite_sent,
+        "invite_error": invite_error,
         "data": _serialize_tenant(restaurant),
     }
 
