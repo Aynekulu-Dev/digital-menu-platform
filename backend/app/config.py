@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     # Resend (HTTPS API) is preferred: Render's free plan blocks outbound
     # SMTP ports (25/465/587), so raw smtplib will time out there.
     resend_api_key: str | None = None
+    brevo_api_key: str | None = None
     smtp_host: str | None = None
     smtp_port: int = 587
     smtp_username: str | None = None

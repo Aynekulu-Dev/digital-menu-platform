@@ -55,6 +55,37 @@ def _send_via_resend(to_email: str, subject: str, text_body: str, html_body: str
         raise EmailSendError(f"Could not reach Resend API: {e.reason}") from e
 
 
+def _send_via_brevo(to_email: str, subject: str, text_body: str, html_body: str | None) -> None:
+    payload = {
+        "sender": {"email": settings.smtp_from_email},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "textContent": text_body,
+    }
+    if html_body:
+        payload["htmlContent"] = html_body
+
+    req = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "api-key": settings.brevo_api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status >= 300:
+                raise EmailSendError(f"Brevo API returned status {resp.status}")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise EmailSendError(f"Brevo API error {e.code}: {body}") from e
+    except urllib.error.URLError as e:
+        raise EmailSendError(f"Could not reach Brevo API: {e.reason}") from e
+
+
 def _send_via_smtp(to_email: str, subject: str, text_body: str, html_body: str | None) -> None:
     message = EmailMessage()
     message["From"] = settings.smtp_from_email
@@ -80,12 +111,16 @@ def send_email(to_email: str, subject: str, text_body: str, html_body: str | Non
         _send_via_resend(to_email, subject, text_body, html_body)
         return
 
+    if settings.brevo_api_key:
+        _send_via_brevo(to_email, subject, text_body, html_body)
+        return
+
     if settings.smtp_host:
         _send_via_smtp(to_email, subject, text_body, html_body)
         return
 
     logger.warning(
-        "No email provider configured (RESEND_API_KEY or SMTP_HOST) -- "
+        "No email provider configured (RESEND_API_KEY, BREVO_API_KEY, or SMTP_HOST) -- "
         "printing email instead of sending.\n"
         "----- EMAIL -----\nTo: %s\nSubject: %s\n\n%s\n-----------------",
         to_email, subject, text_body,
