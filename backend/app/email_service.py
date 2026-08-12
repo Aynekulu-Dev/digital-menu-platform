@@ -27,7 +27,7 @@ class EmailSendError(Exception):
 
 def _send_via_resend(to_email: str, subject: str, text_body: str, html_body: str | None) -> None:
     payload = {
-        "from": settings.smtp_from_email,
+        "from": f"{settings.smtp_from_name} <{settings.smtp_from_email}>",
         "to": [to_email],
         "subject": subject,
         "text": text_body,
@@ -57,7 +57,7 @@ def _send_via_resend(to_email: str, subject: str, text_body: str, html_body: str
 
 def _send_via_brevo(to_email: str, subject: str, text_body: str, html_body: str | None) -> None:
     payload = {
-        "sender": {"email": settings.smtp_from_email},
+        "sender": {"name": settings.smtp_from_name, "email": settings.smtp_from_email},
         "to": [{"email": to_email}],
         "subject": subject,
         "textContent": text_body,
@@ -88,7 +88,7 @@ def _send_via_brevo(to_email: str, subject: str, text_body: str, html_body: str 
 
 def _send_via_smtp(to_email: str, subject: str, text_body: str, html_body: str | None) -> None:
     message = EmailMessage()
-    message["From"] = settings.smtp_from_email
+    message["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
     message["To"] = to_email
     message["Subject"] = subject
     message.set_content(text_body)

@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     smtp_username: str | None = None
     smtp_password: str | None = None
     smtp_from_email: str = "no-reply@menuplatform.local"
+    smtp_from_name: str = "Ethiodigitalmenu"
     smtp_use_tls: bool = True
 
     frontend_base_url: str = "http://localhost:5173"
